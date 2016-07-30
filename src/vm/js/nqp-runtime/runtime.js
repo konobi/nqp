@@ -132,6 +132,8 @@ exports.toStr = function(arg, ctx) {
     return arg;
   } else if (arg !== undefined && arg !== null && arg.typeObject_) {
     return '';
+  } else if (arg === undefined) {
+    return undefined;
   } else if (arg.Str) {
     return arg.Str(ctx, null, arg);
   } else if (arg.$$getStr) {

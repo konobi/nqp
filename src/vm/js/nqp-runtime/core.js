@@ -1,85 +1,75 @@
-var op = {};
-exports.op = op;
+var op = exports.op = {}
 
 var Hash = require('./hash.js');
-var CodeRef = require('./code-ref.js');
-
 var LexPadHack = require('./lexpad-hack.js');
 var NQPInt = require('./nqp-int.js');
-
 var NQPException = require('./nqp-exception.js');
-
 var reprs = require('./reprs.js');
-
 var hll = require('./hll.js');
-
 var NQPArray = require('./array.js');
-
 var bootstrap = require('./bootstrap.js');
-
 var nqp = require('nqp-runtime');
-
 var constants = require('./constants.js');
-
 var containerSpecs = require('./container-specs.js');
+var CodeRef = exports.CodeRef = require('./code-ref.js');
 
-exports.CodeRef = CodeRef;
 
-op.atpos = function(array, index) {
-  return array.$$atpos(index);
+op.atpos = (array, index) => {
+  return (array && (typeof array == 'object') && ('$$atpos' in array)) ? array.$$atpos(index) : undefined;
 };
 
-op.bindpos = function(array, index, value) {
-  return array.$$bindpos(index, value);
+op.bindpos = (array, index, value) => {
+  return (array && (typeof array == 'object') && ('$$bindpos' in array)) ? array.$$bindpos(index, value) : undefined;
 };
 
-op.isinvokable = function(obj) {
-  return (obj instanceof CodeRef || (obj._STable && obj._STable.invocationSpec) ? 1 : 0);
-};
+op.isinvokable = (obj) => {
+  return (obj instanceof CodeRef || (obj._STable && obj._STable.invocationSpec) ? true : false);
+}
 
-op.escape = function(str) {
+String.prototype.replaceAll = function(search, replacement) {
+      var target = this;
+          return target.split(search).join(replacement);
+}
+
+op.escape = (str) => {
+  if(!str) return undefined;
+
+  var re = new RegExp(/[\b]/g);
   return str
-      .replace(/\\/g, '\\\\')
-      .replace(/\x1B/g, '\\e')
-      .replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r')
-      .replace(/\t/g, '\\t')
-      .replace(/\f/g, '\\f')
-      .replace(/[\b]/g, '\\b')
-      .replace(/"/g, '\\"');
-};
+      .replaceAll("\\", '\\\\')
+      .replaceAll("\x1B", '\\e')
+      .replaceAll("\n", '\\n')
+      .replaceAll("\r", '\\r')
+      .replaceAll("\t", '\\t')
+      .replaceAll("\f", '\\f')
+      .replaceAll(/"/g, '\\"')
+      .replace(re, '\\b');
+}
 
-op.x = function(str, times) {
-  if (!times) return '';
-  var ret = str;
-  while (--times) ret += str;
-  return ret;
-};
+op.x = (str, times) => {
+  return (str && (typeof str == 'object') && ('repeat' in str)) ? str.repeat(times) : str;
+}
 
-function radixHelper(radix, str, zpos, flags) {
+
+var radixHelper = exports.radixHelper = (radix, str, zpos, flags) => {
   var lowercase = 'a-' + String.fromCharCode('a'.charCodeAt(0) + radix - 11);
   var uppercase = 'A-' + String.fromCharCode('A'.charCodeAt(0) + radix - 11);
 
   var letters = radix >= 11 ? lowercase + uppercase : '';
 
   var digitclass = '[0-' + Math.min(radix - 1, 9) + letters + ']';
-  var minus = flags & 0x02 ? '(?:-?|\\+?)' : '';
-  var regex = new RegExp(
-      '^' + minus + digitclass + '(?:_' +
-      digitclass + '|' + digitclass + ')*');
+  var regex = new RegExp(`^${flags & 0x02 ? '(?:-?|\\+?)' : ''}${digitclass}(?:_${digitclass}|${digitclass})*`);
   var str = str.slice(zpos);
   var search = str.match(regex);
   if (search == null) {
     return null;
   }
-  var number = search[0].replace(/_/g, '').replace(/^\+/, '');
+  var number = search[0].replaceAll("_", '').replace(/^\+/, '');
   if (flags & 0x01) number = '-' + number;
   if (flags & 0x04) number = number.replace(/0+$/, '');
   var power = number[0] == '-' ? number.length - 1 : number.length;
-  return {power: power, offset: zpos + search[0].length, number: number};
+  return { power: power, offset: zpos + search[0].length, number: number };
 }
-
-exports.radixHelper = radixHelper;
 
 op.radix = function(radix, str, zpos, flags) {
   var extracted = radixHelper(radix, str, zpos, flags);
@@ -448,32 +438,25 @@ op.setcontspec = function(type, specType, conf) {
   }
 };
 
-op.iscont = function(cont) {
-  return cont.$$decont ? 1 : 0;
+op.iscont = (cont) => {
+  return (cont && (typeof cont == 'object') && ('$$deconf' in cont)) ? true : false;
 };
 
-op.iscont_i = function(cont) {
-  // Stub
-  return 0;
-};
+// Stub
+op.iscont_i = (cont) => false;
 
-op.iscont_n = function(cont) {
-  // Stub
-  return 0;
-};
+// Stub
+op.iscont_n = (cont) => false;
 
-op.iscont_s = function(cont) {
-  // Stub
-  return 0;
-};
+// Stub
+op.iscont_s = (cont) => false; 
 
 op.isrwcont = function(cont) {
-  return cont.$$decont ? 1 : 0;
+  return (cont && (typeof cont == 'object') && ('$$decont' in cont)) ? true : false;
 };
 
-op.decont = function(ctx, cont) {
-  if (cont === null || cont === undefined) return cont;
-  return cont.$$decont ? cont.$$decont(ctx) : cont;
+op.decont = (ctx, cont) => {
+  return (cont && (typeof cont == 'object') && ('$$decont' in cont)) ? cont.$$decont(ctx) : cont;
 };
 
 op.box_n = function(n, type) {
